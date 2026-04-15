@@ -40,7 +40,7 @@ GitHub Actions:
 
 - `.github/workflows/android-release.yml` runs only for pushed tags.
 - `verify` runs Android JVM unit tests and DNSTT helper Go tests.
-- `build-apks` runs `:app:assembleDebug` and `:app:assembleRelease`, then uploads APK artifacts.
+- `build-apks` runs `:app:assembleDebug` and `:app:assembleRelease`, uploads APK artifacts, and creates a GitHub Release with the debug and release APKs attached.
 
 GitLab CI:
 

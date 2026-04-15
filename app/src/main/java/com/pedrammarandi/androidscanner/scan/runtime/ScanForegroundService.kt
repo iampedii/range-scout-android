@@ -19,6 +19,7 @@ class ScanForegroundService : Service() {
     private lateinit var engine: ScanEngine
     private lateinit var dnsttRunner: DnsttRunner
     private lateinit var notifier: ScanNotifier
+    private lateinit var runtimeLocks: ScanRuntimeLocks
     private var scanNotificationWarningReported = false
     private var dnsttNotificationWarningReported = false
     private var scanProgressLogMark = 0L
@@ -30,6 +31,7 @@ class ScanForegroundService : Service() {
         engine = app.container.scanEngine
         dnsttRunner = app.container.dnsttRunner
         notifier = ScanNotifier(this)
+        runtimeLocks = ScanRuntimeLocks(this)
         notifier.ensureChannel()
     }
 
@@ -45,6 +47,9 @@ class ScanForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        if (::runtimeLocks.isInitialized) {
+            runtimeLocks.release()
+        }
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -66,6 +71,7 @@ class ScanForegroundService : Service() {
             return
         }
         repository.markScanRunning(request)
+        runtimeLocks.acquire().forEach(repository::addWarning)
         scanNotificationWarningReported = false
         scanProgressLogMark = 0L
         Log.i(logTag, "DNS scan started: targets=${request.totalTargets}, workers=${request.config.workers}")
@@ -108,6 +114,7 @@ class ScanForegroundService : Service() {
                 Log.e(logTag, "DNS scan failed", error)
                 repository.markScanFailed(error.message ?: "Unexpected scan failure.")
             } finally {
+                runtimeLocks.release()
                 activeJob = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -132,6 +139,7 @@ class ScanForegroundService : Service() {
             return
         }
         repository.markDnsttRunning(request)
+        runtimeLocks.acquire().forEach(repository::addWarning)
         dnsttNotificationWarningReported = false
 
         activeJob = serviceScope.launch {
@@ -164,6 +172,7 @@ class ScanForegroundService : Service() {
             } catch (error: Throwable) {
                 repository.markDnsttFailed(error.message ?: "Unexpected DNSTT failure.")
             } finally {
+                runtimeLocks.release()
                 activeJob = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()

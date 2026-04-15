@@ -6,7 +6,7 @@ on:
       - "*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -69,11 +69,32 @@ jobs:
         run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
 
       - name: List APKs
-        run: find app/build/outputs/apk -name "*.apk" -print | sort
+        run: find app/build/outputs/apk/debug app/build/outputs/apk/release -name "*.apk" -print | sort
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-scanner-apks-${{ github.ref_name }}
-          path: app/build/outputs/apk/**/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          shopt -s nullglob
+          assets=(app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk)
+
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No APK files found for release upload."
+            exit 1
+          fi
+
+          if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --title "Android Scanner $TAG_NAME" --generate-notes
+          fi
