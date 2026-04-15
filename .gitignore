@@ -1,0 +1,36 @@
+# OS / IDE
+.DS_Store
+.idea/
+*.iml
+
+# Local machine configuration
+local.properties
+*.env
+
+# Gradle / Android build outputs
+.gradle/
+.gradle-home/
+build/
+*/build/
+captures/
+.cxx/
+.externalNativeBuild/
+
+# Android artifacts should be built by CI, not committed
+*.apk
+*.ap_
+*.aab
+*.aar
+
+# Signing material
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+release-key.properties
+
+# Local Go caches used by the DNSTT helper build
+.go/
+
+# Logs
+*.log

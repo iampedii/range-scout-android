@@ -1,0 +1,70 @@
+stages:
+  - verify
+  - build
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - when: never
+
+default:
+  image: ghcr.io/cirruslabs/android-sdk:34
+  before_script:
+    - chmod +x ./gradlew
+    - apt-get update
+    - apt-get install -y --no-install-recommends ca-certificates curl
+    - |
+      if ! command -v go >/dev/null || ! go version | grep -q "go${GO_VERSION}"; then
+        curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tgz
+        rm -rf /usr/local/go
+        tar -C /usr/local -xzf /tmp/go.tgz
+      fi
+    - export PATH="/usr/local/go/bin:${PATH}"
+    - java -version
+    - go version
+
+variables:
+  GO_VERSION: "1.24.1"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle-home"
+  GOMODCACHE: "$CI_PROJECT_DIR/.go/pkg/mod"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
+
+cache:
+  key: "$CI_PROJECT_NAME"
+  paths:
+    - .gradle-home/caches/
+    - .gradle-home/wrapper/
+    - .go/pkg/mod/
+    - app/build/go-build-cache/
+
+android_unit_tests:
+  stage: verify
+  script:
+    - ./gradlew :app:testDebugUnitTest --stacktrace
+  artifacts:
+    when: always
+    reports:
+      junit: app/build/test-results/testDebugUnitTest/*.xml
+    paths:
+      - app/build/reports/tests/testDebugUnitTest/
+    expire_in: 14 days
+
+dnstt_helper_tests:
+  stage: verify
+  script:
+    - cd dnstt-helper
+    - go test ./...
+
+build_apks:
+  stage: build
+  needs:
+    - android_unit_tests
+    - dnstt_helper_tests
+  script:
+    - ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+    - find app/build/outputs/apk -name "*.apk" -print | sort
+  artifacts:
+    name: "android-scanner-apks-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - app/build/outputs/apk/**/*.apk
+    expire_in: 14 days
