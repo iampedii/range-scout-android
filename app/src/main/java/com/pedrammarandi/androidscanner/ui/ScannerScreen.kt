@@ -300,7 +300,7 @@ fun ScannerScreen(
                                     color = TextPrimary,
                                 )
                                 Text(
-                                    text = "v0.1",
+                                    text = "v0.1.1",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Light,
                                     color = TextTertiary,
