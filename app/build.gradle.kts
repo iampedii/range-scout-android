@@ -43,6 +43,35 @@ val generatedDnsttJniLibsDir = layout.buildDirectory.dir("generated/jniLibs/dnst
 val goBuildCacheDir = layout.buildDirectory.dir("go-build-cache")
 val goExecutable = resolveGoExecutable()
 
+fun signingValue(name: String): String? {
+    return localProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+fun projectOrAbsoluteFile(path: String): File {
+    val file = File(path)
+    return if (file.isAbsolute) file else rootProject.file(path)
+}
+
+val releaseStoreFilePath = signingValue("RELEASE_STORE_FILE")
+val releaseStorePassword = signingValue("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = signingValue("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = signingValue("RELEASE_KEY_PASSWORD")
+val releaseSigningValues = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+)
+val releaseSigningConfigured = releaseSigningValues.all { it != null }
+
+if (releaseSigningValues.any { it != null } && !releaseSigningConfigured) {
+    error(
+        "Release signing is partially configured. Set RELEASE_STORE_FILE, " +
+            "RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD.",
+    )
+}
+
 data class DnsttHelperAbiTarget(
     val abi: String,
     val goArch: String,
@@ -75,9 +104,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = projectOrAbsoluteFile(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfigs.findByName("release")?.let {
+                signingConfig = it
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

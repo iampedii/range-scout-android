@@ -40,19 +40,42 @@ GitHub Actions:
 
 - `.github/workflows/android-release.yml` runs only for pushed tags.
 - `verify` runs Android JVM unit tests and DNSTT helper Go tests.
-- `build-apks` runs `:app:assembleDebug` and `:app:assembleRelease`, uploads APK artifacts, and creates a GitHub Release with the debug and release APKs attached.
+- `build-apks` decodes the release keystore from GitHub Secrets, runs `:app:assembleDebug` and `:app:assembleRelease`, uploads named APK artifacts, and creates or updates the GitHub Release.
 
 GitLab CI:
 
 - `.gitlab-ci.yml` is also restricted to tag pipelines through `workflow: rules`.
-- `verify` and `build` match the GitHub release workflow.
+- `verify` and `build` match the GitHub release workflow for signed, named APK artifacts.
+
+Required signing secrets or CI/CD variables:
+
+- `RELEASE_KEYSTORE_BASE64`: base64 content of the release `.jks` keystore.
+- `RELEASE_STORE_PASSWORD`: keystore password.
+- `RELEASE_KEY_ALIAS`: release key alias.
+- `RELEASE_KEY_PASSWORD`: release key password.
+
+Local release signing uses the same values from `local.properties`:
+
+```properties
+RELEASE_STORE_FILE=/absolute/path/to/range-scout-release.jks
+RELEASE_STORE_PASSWORD=your_keystore_password
+RELEASE_KEY_ALIAS=range-scout
+RELEASE_KEY_PASSWORD=your_key_password
+```
 
 Create a release build with:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
+
+The release pipeline publishes these APK assets:
+
+- `range-scout-<tag>-arm64-v8a-release-signed.apk`
+- `range-scout-<tag>-universal-release-signed.apk`
+- `range-scout-<tag>-arm64-v8a-debug.apk`
+- `range-scout-<tag>-universal-debug.apk`
 
 The Android build enables an `arm64-v8a` APK plus a universal APK. The bundled
 DNSTT helper is currently packaged for `arm64-v8a`, which is the only Android
@@ -68,7 +91,7 @@ for those targets.
 
 Do not commit APKs, AABs, keystores, `local.properties`, `.gradle*`, or `build` outputs. The `.gitignore` keeps those local/generated files out of Git, and tag-triggered CI should be the place where APK artifacts are produced.
 
-Release APKs built by the default pipeline are unsigned unless signing is added through protected CI secrets. Keep signing keys and passwords in GitHub Actions secrets or GitLab CI/CD variables, not in this repository.
+Release APKs are signed only when all required signing values are present. The CI pipelines fail instead of publishing unsigned release APKs. Keep signing keys and passwords in GitHub Actions secrets or GitLab CI/CD variables, not in this repository.
 
 ## Project Layout
 

@@ -61,10 +61,23 @@ build_apks:
     - android_unit_tests
     - dnstt_helper_tests
   script:
+    - |
+      for secret_name in RELEASE_KEYSTORE_BASE64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+        if [ -z "$(printenv "$secret_name")" ]; then
+          echo "$secret_name is required for signed release builds." >&2
+          exit 1
+        fi
+      done
+      signing_dir="$CI_PROJECT_DIR/.gradle-home/android-signing"
+      mkdir -p "$signing_dir"
+      export RELEASE_STORE_FILE="$signing_dir/range-scout-release.jks"
+      printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RELEASE_STORE_FILE"
     - ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
     - find app/build/outputs/apk -name "*.apk" -print | sort
+    - TAG_NAME="$CI_COMMIT_TAG" bash scripts/prepare-release-apks.sh
+    - find app/build/release-assets -name "*.apk" -print | sort
   artifacts:
-    name: "android-scanner-apks-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
+    name: "range-scout-apks-$CI_COMMIT_TAG"
     paths:
-      - app/build/outputs/apk/**/*.apk
+      - app/build/release-assets/*.apk
     expire_in: 14 days
