@@ -30,6 +30,17 @@ class DnsttConfigValidatorTest {
     }
 
     @Test
+    fun validateCapsWorkersAtAndroidRuntimeLimit() {
+        val config = DnsttConfigValidator.validate(
+            DnsttConfigDraft(
+                workers = "128",
+            ),
+        ).getOrThrow()
+
+        assertEquals(32, config.workers)
+    }
+
+    @Test
     fun validateRejectsSocksPasswordWithoutUsername() {
         val result = DnsttConfigValidator.validate(
             DnsttConfigDraft(

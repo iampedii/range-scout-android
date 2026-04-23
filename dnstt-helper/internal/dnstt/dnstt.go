@@ -21,6 +21,8 @@ import (
 
 const (
 	defaultEDNSBufSize = 1232
+	defaultWorkers     = 8
+	maxWorkers         = 32
 	DefaultE2ETestURL  = "http://www.gstatic.com/generate_204"
 )
 
@@ -161,7 +163,10 @@ func EligibleResolvers(resolvers []model.Resolver, scoreThreshold int) []int {
 
 func prepareConfig(resolvers []model.Resolver, cfg Config) (Config, []int, error) {
 	if cfg.Workers <= 0 {
-		cfg.Workers = 4
+		cfg.Workers = defaultWorkers
+	}
+	if cfg.Workers > maxWorkers {
+		cfg.Workers = maxWorkers
 	}
 	if cfg.Timeout <= 0 {
 		return Config{}, nil, fmt.Errorf("dnstt timeout must be greater than zero")

@@ -48,7 +48,7 @@ class ScanRepository(
             _state.update { current ->
                 current.copy(
                     configDraft = sanitizeScanDraft(profile.scanConfigDraft),
-                    dnsttConfigDraft = profile.dnsttConfigDraft,
+                    dnsttConfigDraft = sanitizeDnsttDraft(profile.dnsttConfigDraft),
                     activityLog = appendLog(current.activityLog, "Loaded saved profile"),
                 )
             }
@@ -94,6 +94,9 @@ class ScanRepository(
 
     fun updateProbeDomain(value: String) = updateDraft { copy(probeDomain = value) }
 
+    fun updateQuerySize(value: String) =
+        updateDraft { copy(querySize = sanitizeNonNegativeIntInput(value)) }
+
     fun updateScoreThreshold(value: String) =
         updateDraft { copy(scoreThreshold = sanitizeIntegerInput(value, minValue = 1, maxValue = 6)) }
 
@@ -135,7 +138,8 @@ class ScanRepository(
         }
     }
 
-    fun updateDnsttWorkers(value: String) = updateDnsttDraft { copy(workers = value) }
+    fun updateDnsttWorkers(value: String) =
+        updateDnsttDraft { copy(workers = sanitizeIntegerInput(value, minValue = 1, maxValue = maxDnsttWorkers)) }
 
     fun updateDnsttTimeoutMillis(value: String) = updateDnsttDraft { copy(timeoutMillis = value) }
 
@@ -643,6 +647,12 @@ class ScanRepository(
             port = sanitizeIntegerInput(draft.port, minValue = 1, maxValue = 65_535),
             querySize = sanitizeNonNegativeIntInput(draft.querySize),
             scoreThreshold = sanitizeIntegerInput(draft.scoreThreshold, minValue = 1, maxValue = 6),
+        )
+    }
+
+    private fun sanitizeDnsttDraft(draft: DnsttConfigDraft): DnsttConfigDraft {
+        return draft.copy(
+            workers = sanitizeIntegerInput(draft.workers, minValue = 1, maxValue = maxDnsttWorkers),
         )
     }
 

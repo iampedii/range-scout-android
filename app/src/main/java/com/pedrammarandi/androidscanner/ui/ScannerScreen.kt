@@ -74,6 +74,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pedrammarandi.androidscanner.BuildConfig
 import com.pedrammarandi.androidscanner.scan.model.DnsttSortOption
 import com.pedrammarandi.androidscanner.scan.model.DnsttTransport
 import com.pedrammarandi.androidscanner.scan.model.FailureRecord
@@ -126,6 +127,7 @@ fun ScannerScreen(
     onTimeoutChanged: (String) -> Unit,
     onPortChanged: (String) -> Unit,
     onProbeDomainChanged: (String) -> Unit,
+    onQuerySizeChanged: (String) -> Unit,
     onScoreThresholdChanged: (String) -> Unit,
     onProtocolSelected: (ScanTransport) -> Unit,
     onSuccessSortChanged: (SuccessSortOption) -> Unit,
@@ -300,7 +302,7 @@ fun ScannerScreen(
                                     color = TextPrimary,
                                 )
                                 Text(
-                                    text = "v0.1.1",
+                                    text = "v${BuildConfig.VERSION_NAME}",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Light,
                                     color = TextTertiary,
@@ -439,6 +441,7 @@ fun ScannerScreen(
                         onTimeoutChanged = onTimeoutChanged,
                         onPortChanged = onPortChanged,
                         onProbeDomainChanged = onProbeDomainChanged,
+                        onQuerySizeChanged = onQuerySizeChanged,
                         onScoreThresholdChanged = onScoreThresholdChanged,
                         onProtocolSelected = onProtocolSelected,
                         successSort = state.successSort,
@@ -486,6 +489,7 @@ fun ScannerScreen(
                         onTimeoutChanged = onDnsttTimeoutChanged,
                         onTransportSelected = onDnsttTransportSelected,
                         onDomainChanged = onDnsttDomainChanged,
+                        onQuerySizeChanged = onQuerySizeChanged,
                         onPubkeyChanged = onDnsttPubkeyChanged,
                         onE2eTimeoutChanged = onDnsttE2eTimeoutChanged,
                         onE2eUrlChanged = onDnsttE2eUrlChanged,
@@ -850,6 +854,7 @@ private fun ModernScanTab(
     onTimeoutChanged: (String) -> Unit,
     onPortChanged: (String) -> Unit,
     onProbeDomainChanged: (String) -> Unit,
+    onQuerySizeChanged: (String) -> Unit,
     onScoreThresholdChanged: (String) -> Unit,
     onProtocolSelected: (ScanTransport) -> Unit,
     successSort: SuccessSortOption,
@@ -1069,7 +1074,7 @@ private fun ModernScanTab(
                     leftLabel = "Workers",
                     leftValue = state.configDraft.workers,
                     onLeftChange = onWorkersChanged,
-                    leftDescription = "Concurrent DNS workers (1-8, default: 8)",
+                    leftDescription = "Concurrent DNS workers (1-64, default: 8)",
                     rightLabel = "Timeout (ms)",
                     rightValue = state.configDraft.timeoutMillis,
                     onRightChange = onTimeoutChanged,
@@ -1092,6 +1097,21 @@ private fun ModernScanTab(
                     onRightChange = onScoreThresholdChanged,
                     rightDescription = "Resolver score needed for DNSTT (1-6, default: 2)",
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ModernTextField(
+                        value = state.configDraft.querySize,
+                        onValueChange = onQuerySizeChanged,
+                        label = "Query Size",
+                        keyboardType = KeyboardType.Number,
+                    )
+                    Text(
+                        text = "Tunnel realism query size in bytes; blank uses default",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextTertiary,
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1282,6 +1302,7 @@ private fun ModernDnsttTab(
     onTimeoutChanged: (String) -> Unit,
     onTransportSelected: (DnsttTransport) -> Unit,
     onDomainChanged: (String) -> Unit,
+    onQuerySizeChanged: (String) -> Unit,
     onPubkeyChanged: (String) -> Unit,
     onE2eTimeoutChanged: (String) -> Unit,
     onE2eUrlChanged: (String) -> Unit,
@@ -1352,12 +1373,27 @@ private fun ModernDnsttTab(
                     leftLabel = "Workers",
                     leftValue = state.dnsttConfigDraft.workers,
                     onLeftChange = onWorkersChanged,
-                    leftDescription = "Concurrent DNSTT workers",
+                    leftDescription = "Concurrent DNSTT workers (1-32, default: 8)",
                     rightLabel = "Timeout (ms)",
                     rightValue = state.dnsttConfigDraft.timeoutMillis,
                     onRightChange = onTimeoutChanged,
                     rightDescription = "Tunnel precheck timeout",
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ModernTextField(
+                        value = state.configDraft.querySize,
+                        onValueChange = onQuerySizeChanged,
+                        label = "DNSTT MTU",
+                        keyboardType = KeyboardType.Number,
+                    )
+                    Text(
+                        text = "Embedded DNSTT max payload; blank uses the client default",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextTertiary,
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
                 ConfigFieldSection(

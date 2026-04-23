@@ -42,15 +42,77 @@ val dnsttHelperDir = rootProject.layout.projectDirectory.dir("dnstt-helper")
 val generatedDnsttJniLibsDir = layout.buildDirectory.dir("generated/jniLibs/dnstt")
 val goBuildCacheDir = layout.buildDirectory.dir("go-build-cache")
 val goExecutable = resolveGoExecutable()
+val androidMinSdk = 26
+val androidNdkVersion = "26.3.11579264"
 
-fun signingValue(name: String): String? {
+fun configValue(name: String): String? {
     return localProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
         ?: System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
 }
 
+fun signingValue(name: String): String? = configValue(name)
+
 fun projectOrAbsoluteFile(path: String): File {
     val file = File(path)
     return if (file.isAbsolute) file else rootProject.file(path)
+}
+
+fun resolveAndroidNdkDir(): File {
+    val explicitCandidates = listOfNotNull(
+        configValue("ndk.dir"),
+        configValue("ANDROID_NDK_HOME"),
+        configValue("ANDROID_NDK_ROOT"),
+        configValue("NDK_HOME"),
+    )
+
+    explicitCandidates.firstOrNull { path ->
+        File(path).isDirectory
+    }?.let { return File(it) }
+
+    val sdkCandidates = listOfNotNull(
+        configValue("sdk.dir"),
+        configValue("ANDROID_HOME"),
+        configValue("ANDROID_SDK_ROOT"),
+    )
+
+    sdkCandidates.firstOrNull { sdkPath ->
+        File(sdkPath, "ndk/$androidNdkVersion").isDirectory
+    }?.let { return File(it, "ndk/$androidNdkVersion") }
+
+    error(
+        "Android NDK $androidNdkVersion not found. Install it with " +
+            "sdkmanager \"ndk;$androidNdkVersion\" or set ndk.dir/ANDROID_NDK_HOME.",
+    )
+}
+
+fun androidNdkHostTags(): List<String> {
+    val osName = System.getProperty("os.name").lowercase()
+    val osArch = System.getProperty("os.arch").lowercase()
+    return when {
+        osName.contains("mac") && (osArch.contains("aarch64") || osArch.contains("arm64")) ->
+            listOf("darwin-arm64", "darwin-x86_64")
+        osName.contains("mac") -> listOf("darwin-x86_64", "darwin-arm64")
+        osName.contains("windows") -> listOf("windows-x86_64")
+        else -> listOf("linux-x86_64")
+    }
+}
+
+fun resolveAndroidClangExecutable(targetPrefix: String): File {
+    val compilerName = "$targetPrefix$androidMinSdk-clang"
+    val llvmPrebuiltDir = resolveAndroidNdkDir().resolve("toolchains/llvm/prebuilt")
+    val candidates = androidNdkHostTags().flatMap { hostTag ->
+        val binDir = llvmPrebuiltDir.resolve("$hostTag/bin")
+        listOf(
+            binDir.resolve(compilerName),
+            binDir.resolve("$compilerName.cmd"),
+        )
+    }
+
+    return candidates.firstOrNull { it.canExecute() }
+        ?: error(
+            "Android NDK clang executable $compilerName not found. Checked: " +
+                candidates.joinToString { it.absolutePath },
+        )
 }
 
 val releaseStoreFilePath = signingValue("RELEASE_STORE_FILE")
@@ -77,26 +139,44 @@ data class DnsttHelperAbiTarget(
     val goArch: String,
     val goArm: String? = null,
     val taskSuffix: String,
+    val androidClangPrefix: String? = null,
 )
 
-// Go's android/arm, android/386, and android/amd64 targets require Android NDK
-// cgo linkers. Keep the packaged helper arm64-only until an NDK-backed build is
-// added; this keeps local and CI builds reproducible without committing APKs.
 val dnsttHelperAbiTargets = listOf(
+    DnsttHelperAbiTarget(
+        abi = "armeabi-v7a",
+        goArch = "arm",
+        goArm = "7",
+        taskSuffix = "ArmeabiV7a",
+        androidClangPrefix = "armv7a-linux-androideabi",
+    ),
     DnsttHelperAbiTarget(
         abi = "arm64-v8a",
         goArch = "arm64",
-        taskSuffix = "Arm64",
+        taskSuffix = "Arm64V8a",
+    ),
+    DnsttHelperAbiTarget(
+        abi = "x86",
+        goArch = "386",
+        taskSuffix = "X86",
+        androidClangPrefix = "i686-linux-android",
+    ),
+    DnsttHelperAbiTarget(
+        abi = "x86_64",
+        goArch = "amd64",
+        taskSuffix = "X8664",
+        androidClangPrefix = "x86_64-linux-android",
     ),
 )
 
 android {
     namespace = "com.pedrammarandi.androidscanner"
     compileSdk = 34
+    ndkVersion = androidNdkVersion
 
     defaultConfig {
         applicationId = "com.pedrammarandi.androidscanner"
-        minSdk = 26
+        minSdk = androidMinSdk
         targetSdk = 34
         versionCode = 2
         versionName = "0.1.1"
@@ -132,7 +212,7 @@ android {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a")
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
             isUniversalApk = true
         }
     }
@@ -147,6 +227,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -178,7 +259,6 @@ val buildDnsttHelperTasks = dnsttHelperAbiTargets.map { target ->
         environment("GOOS", "android")
         environment("GOARCH", target.goArch)
         target.goArm?.let { environment("GOARM", it) }
-        environment("CGO_ENABLED", "0")
         args(
             "build",
             "-trimpath",
@@ -195,6 +275,15 @@ val buildDnsttHelperTasks = dnsttHelperAbiTargets.map { target ->
         doFirst {
             outputFile.get().parentFile.mkdirs()
             goBuildCacheDir.get().asFile.mkdirs()
+            if (target.androidClangPrefix == null) {
+                environment("CGO_ENABLED", "0")
+            } else {
+                environment("CGO_ENABLED", "1")
+                environment(
+                    "CC",
+                    resolveAndroidClangExecutable(target.androidClangPrefix).absolutePath,
+                )
+            }
         }
     }
 }

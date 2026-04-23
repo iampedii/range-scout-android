@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
                     onTimeoutChanged = viewModel::updateTimeoutMillis,
                     onPortChanged = viewModel::updatePort,
                     onProbeDomainChanged = viewModel::updateProbeDomain,
+                    onQuerySizeChanged = viewModel::updateQuerySize,
                     onScoreThresholdChanged = viewModel::updateScoreThreshold,
                     onProtocolSelected = viewModel::updateProtocol,
                     onSuccessSortChanged = viewModel::updateSuccessSort,

@@ -6,7 +6,6 @@ app_asset_name="${APP_ASSET_NAME:-range-scout}"
 apk_root="${APK_ROOT:-app/build/outputs/apk}"
 asset_dir="${ASSET_DIR:-app/build/release-assets}"
 
-debug_dir="$apk_root/debug"
 release_dir="$apk_root/release"
 
 copy_required_match() {
@@ -28,8 +27,8 @@ copy_required_match() {
   cp "${matches[0]}" "$asset_dir/$output_name"
 }
 
-if [ ! -d "$debug_dir" ] || [ ! -d "$release_dir" ]; then
-  echo "APK output directories are missing. Run Gradle assembleDebug and assembleRelease first." >&2
+if [ ! -d "$release_dir" ]; then
+  echo "APK output directory is missing. Run Gradle assembleRelease first." >&2
   exit 1
 fi
 
@@ -42,9 +41,12 @@ fi
 rm -rf "$asset_dir"
 mkdir -p "$asset_dir"
 
-copy_required_match "$debug_dir" "*arm64-v8a-debug.apk" "$app_asset_name-$tag_name-arm64-v8a-debug.apk"
-copy_required_match "$debug_dir" "*universal-debug.apk" "$app_asset_name-$tag_name-universal-debug.apk"
-copy_required_match "$release_dir" "*arm64-v8a-release.apk" "$app_asset_name-$tag_name-arm64-v8a-release-signed.apk"
+release_abis=("arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+
+for abi in "${release_abis[@]}"; do
+  copy_required_match "$release_dir" "*-$abi-release.apk" "$app_asset_name-$tag_name-$abi-release-signed.apk"
+done
+
 copy_required_match "$release_dir" "*universal-release.apk" "$app_asset_name-$tag_name-universal-release-signed.apk"
 
 find "$asset_dir" -maxdepth 1 -type f -name "*.apk" -print | sort

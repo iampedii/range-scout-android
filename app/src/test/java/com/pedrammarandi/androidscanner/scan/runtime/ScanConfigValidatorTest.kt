@@ -29,14 +29,14 @@ class ScanConfigValidatorTest {
     }
 
     @Test
-    fun validateCapsWorkersForAndroidRuntimeStability() {
+    fun validateCapsWorkersAtAndroidRuntimeLimit() {
         val config = ScanConfigValidator.validate(
             ScanConfigDraft(
                 workers = "128",
             ),
         ).getOrThrow()
 
-        assertEquals(8, config.workers)
+        assertEquals(64, config.workers)
     }
 
     @Test

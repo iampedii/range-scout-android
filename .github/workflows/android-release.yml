@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  ANDROID_NDK_VERSION: "26.3.11579264"
+
 jobs:
   verify:
     name: Verify
@@ -29,6 +32,11 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "ndk;$ANDROID_NDK_VERSION"
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
@@ -62,6 +70,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "ndk;$ANDROID_NDK_VERSION"
+
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
@@ -93,11 +106,11 @@ jobs:
             echo "RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
-      - name: Build debug and release APKs
-        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+      - name: Build release APKs
+        run: ./gradlew :app:assembleRelease --stacktrace
 
       - name: List APKs
-        run: find app/build/outputs/apk/debug app/build/outputs/apk/release -name "*.apk" -print | sort
+        run: find app/build/outputs/apk/release -name "*.apk" -print | sort
 
       - name: Prepare release assets
         env:

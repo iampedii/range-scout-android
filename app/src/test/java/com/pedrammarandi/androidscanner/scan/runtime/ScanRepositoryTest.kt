@@ -116,6 +116,17 @@ class ScanRepositoryTest {
     }
 
     @Test
+    fun updateQuerySizeSanitizesToNonNegativeDigits() {
+        val repository = ScanRepository(targetParser = TargetParser())
+
+        repository.updateQuerySize("512 bytes")
+        assertEquals("512", repository.state.value.configDraft.querySize)
+
+        repository.updateQuerySize("-12")
+        assertEquals("12", repository.state.value.configDraft.querySize)
+    }
+
+    @Test
     fun appendFailurePreservesFailureOrder() {
         val repository = ScanRepository(targetParser = TargetParser())
 
@@ -588,7 +599,7 @@ class ScanRepositoryTest {
         val result = repository.saveProfile()
 
         assertTrue(result.isSuccess)
-        assertEquals("8", profileStore.savedProfile?.scanConfigDraft?.workers)
+        assertEquals("64", profileStore.savedProfile?.scanConfigDraft?.workers)
         assertEquals("example.com", profileStore.savedProfile?.scanConfigDraft?.probeDomain)
         assertEquals(DnsttTransport.TCP, profileStore.savedProfile?.dnsttConfigDraft?.transport)
         assertEquals("tunnel.example", profileStore.savedProfile?.dnsttConfigDraft?.domain)
@@ -599,15 +610,24 @@ class ScanRepositoryTest {
     fun updateScanNumericFieldsReflectRuntimeLimits() {
         val repository = ScanRepository(targetParser = TargetParser())
 
-        repository.updateWorkers("16")
+        repository.updateWorkers("128")
         repository.updateTimeoutMillis("50.00")
         repository.updatePort("70000")
         repository.updateScoreThreshold("9")
 
-        assertEquals("8", repository.state.value.configDraft.workers)
+        assertEquals("64", repository.state.value.configDraft.workers)
         assertEquals("500", repository.state.value.configDraft.timeoutMillis)
         assertEquals("65535", repository.state.value.configDraft.port)
         assertEquals("6", repository.state.value.configDraft.scoreThreshold)
+    }
+
+    @Test
+    fun updateDnsttWorkersReflectsRuntimeLimit() {
+        val repository = ScanRepository(targetParser = TargetParser())
+
+        repository.updateDnsttWorkers("128")
+
+        assertEquals("32", repository.state.value.dnsttConfigDraft.workers)
     }
 
     @Test
@@ -626,6 +646,7 @@ class ScanRepositoryTest {
         assertEquals(ScanTransport.TCP, repository.state.value.configDraft.protocol)
         assertTrue(repository.state.value.targetInput.startsWith("85.185.105.104"))
         assertTrue(repository.state.value.targetInput.contains("2.189.1.1"))
+        assertTrue(repository.state.value.targetInput.contains("46.209.153.233"))
         assertFalse(repository.state.value.targetInput.startsWith("185.212.51.144"))
     }
 
@@ -647,7 +668,7 @@ class ScanRepositoryTest {
             ),
         )
 
-        assertEquals("8", repository.state.value.configDraft.workers)
+        assertEquals("64", repository.state.value.configDraft.workers)
         assertEquals("saved.example", repository.state.value.configDraft.probeDomain)
         assertEquals(DnsttTransport.TCP, repository.state.value.dnsttConfigDraft.transport)
         assertEquals("dnstt.saved.example", repository.state.value.dnsttConfigDraft.domain)

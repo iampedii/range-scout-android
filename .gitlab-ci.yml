@@ -20,11 +20,14 @@ default:
         tar -C /usr/local -xzf /tmp/go.tgz
       fi
     - export PATH="/usr/local/go/bin:${PATH}"
+    - yes | sdkmanager --licenses >/dev/null || true
+    - sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
     - java -version
     - go version
 
 variables:
   GO_VERSION: "1.24.1"
+  ANDROID_NDK_VERSION: "26.3.11579264"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle-home"
   GOMODCACHE: "$CI_PROJECT_DIR/.go/pkg/mod"
   GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
@@ -72,8 +75,8 @@ build_apks:
       mkdir -p "$signing_dir"
       export RELEASE_STORE_FILE="$signing_dir/range-scout-release.jks"
       printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RELEASE_STORE_FILE"
-    - ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
-    - find app/build/outputs/apk -name "*.apk" -print | sort
+    - ./gradlew :app:assembleRelease --stacktrace
+    - find app/build/outputs/apk/release -name "*.apk" -print | sort
     - TAG_NAME="$CI_COMMIT_TAG" bash scripts/prepare-release-apks.sh
     - find app/build/release-assets -name "*.apk" -print | sort
   artifacts:

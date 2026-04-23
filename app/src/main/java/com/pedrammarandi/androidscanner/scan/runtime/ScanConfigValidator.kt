@@ -4,7 +4,8 @@ import com.pedrammarandi.androidscanner.scan.model.ScanConfig
 import com.pedrammarandi.androidscanner.scan.model.ScanConfigDraft
 import java.net.URI
 
-internal const val maxDnsScanWorkers = 8
+internal const val maxDnsScanWorkers = 64
+internal const val maxDnsttWorkers = 32
 internal const val minDnsTimeoutMillis = 500
 internal const val maxDnsTimeoutMillis = 60_000
 

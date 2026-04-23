@@ -9,6 +9,7 @@ object DnsttConfigValidator {
         val workers = draft.workers.trim().toIntOrNull()
             ?.takeIf { it > 0 }
             ?: error("DNSTT workers must be a positive integer.")
+        val boundedWorkers = workers.coerceAtMost(maxDnsttWorkers)
 
         val timeoutMillis = draft.timeoutMillis.trim().toIntOrNull()
             ?.takeIf { it > 0 }
@@ -43,7 +44,7 @@ object DnsttConfigValidator {
         }
 
         DnsttConfig(
-            workers = workers,
+            workers = boundedWorkers,
             timeoutMillis = timeoutMillis,
             transport = draft.transport,
             domain = domain,

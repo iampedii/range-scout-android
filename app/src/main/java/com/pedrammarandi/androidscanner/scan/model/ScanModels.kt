@@ -32,7 +32,7 @@ data class ScanConfig(
 )
 
 data class DnsttConfigDraft(
-    val workers: String = "4",
+    val workers: String = "8",
     val timeoutMillis: String = "5000",
     val transport: DnsttTransport = DnsttTransport.UDP,
     val domain: String = "1.1.1.1",

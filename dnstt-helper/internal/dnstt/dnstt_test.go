@@ -30,6 +30,33 @@ func TestEligibleResolversFiltersQualifiedCandidates(t *testing.T) {
 	}
 }
 
+func TestPrepareConfigBoundsWorkers(t *testing.T) {
+	resolvers := []model.Resolver{{IP: "198.51.100.10", TunnelScore: 6}}
+
+	cfg, _, err := prepareConfig(resolvers, Config{
+		Timeout: 500 * time.Millisecond,
+		Domain:  "t.example.com",
+	})
+	if err != nil {
+		t.Fatalf("prepareConfig returned error: %v", err)
+	}
+	if cfg.Workers != defaultWorkers {
+		t.Fatalf("expected default workers %d, got %d", defaultWorkers, cfg.Workers)
+	}
+
+	cfg, _, err = prepareConfig(resolvers, Config{
+		Workers: 999,
+		Timeout: 500 * time.Millisecond,
+		Domain:  "t.example.com",
+	})
+	if err != nil {
+		t.Fatalf("prepareConfig returned error: %v", err)
+	}
+	if cfg.Workers != maxWorkers {
+		t.Fatalf("expected capped workers %d, got %d", maxWorkers, cfg.Workers)
+	}
+}
+
 func TestTestMarksHealthyResolversWithTunnelResults(t *testing.T) {
 	port, shutdown := startTestDNSServer(t, func(w dns.ResponseWriter, r *dns.Msg) {
 		reply := new(dns.Msg)

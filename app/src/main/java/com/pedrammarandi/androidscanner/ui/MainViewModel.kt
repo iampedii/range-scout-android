@@ -30,6 +30,8 @@ class MainViewModel(
 
     fun updateProbeDomain(value: String) = repository.updateProbeDomain(value)
 
+    fun updateQuerySize(value: String) = repository.updateQuerySize(value)
+
     fun updateScoreThreshold(value: String) = repository.updateScoreThreshold(value)
 
     fun updateProtocol(value: ScanTransport) = repository.updateProtocol(value)
